@@ -66,7 +66,7 @@ void machineCommandHandler(uint32_t flag){
 		}
 		else if(data=='\b')
 		{
-			if(active->receiveHEAD>0)
+			if(active->receiveHEAD>active->readHEAD)
 			{
 				active->receiveHEAD-=1;
 				active->receiveBuffer[active->receiveHEAD]=0x00;
@@ -143,7 +143,7 @@ void processCommand(void)
 	{
 		uint8_t prompt[] = "command not recognized\r\n";
 		writeDirect(prompt,sizeof(prompt));
-		writeDirect(&machineName[0],64);
+		writeDirect(&machineName[0],strlen(&machineName[0]));
 		MAP_UART_transmitData(EUSCI_A0_BASE,'>');
 	}
 	else{

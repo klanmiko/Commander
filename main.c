@@ -99,13 +99,14 @@ int main(void)
     }
     initSerial();
     initMachine();
+	initLogin();
     CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_12);
     CS_initClockSignal(CS_MCLK,CS_DCOCLK_SELECT,CS_CLOCK_DIVIDER_1);
     CS_initClockSignal(CS_SMCLK,CS_DCOCLK_SELECT,CS_CLOCK_DIVIDER_4);
     CS_initClockSignal(CS_ACLK,CS_REFOCLK_SELECT,CS_CLOCK_DIVIDER_1);
 	MAP_PCM_setPowerState(PCM_AM_LDO_VCORE0);
-    MAP_FlashCtl_setWaitState(FLASH_BANK0, 2);
-    MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
+    MAP_FlashCtl_setWaitState(FLASH_BANK0, 3);
+    MAP_FlashCtl_setWaitState(FLASH_BANK1, 3);
 	initTimer();
     initGpio();
 	MAP_SysCtl_enableSRAMBankRetention(SYSCTL_SRAM_BANK1);
@@ -150,6 +151,7 @@ void echo(int argc, char *argv[]){
 }
 void set(int argc, char *argv[]){
 	MAP_Interrupt_disableMaster();
+	uint8_t me[64];
 	if(argc>2)
 	{
 		if(strcmp(argv[1],"name")==0)
@@ -164,13 +166,19 @@ void set(int argc, char *argv[]){
 		else if(strcmp(argv[1],"password")==0){
 			if(strlen(argv[2])<=64){
 				uint8_t *password;
+				memset(me,0x00,64);
+				strcpy(me,argv[2]);
 				password=PASSWORD_ADDRESS;
 				memset(encryptedData,0x00,64);
 				int i=0;
-				for(;i<active->receiveHEAD;i+=16)
+				for(;i<64;i+=16)
 				{
-					MAP_AES256_encryptData(AES256_BASE, argv[2][i], encryptedData[i]);
+					MAP_AES256_encryptData(AES256_BASE, &me[i], &encryptedData[i]);
 				}
+				uint8_t *src;
+				src = PASSWORD_SET_FLAG_ADDRESS;
+				if(!MAP_FlashCtl_eraseSector(src))
+					while(1);
 				if(!MAP_FlashCtl_programMemory(encryptedData,password, 64))
 					while(1);
 				password=PASSWORD_SET_FLAG_ADDRESS;
@@ -201,6 +209,7 @@ void quit(int argc, char *argv[]){
 	loginhandler=loginPromptHandler;
 	toggleBuffer();
 	powerState=PCM_LPM0_LDO_VCORE0;
+	run=noapp;
 	loginhandler(EUSCI_A_UART_RECEIVE_INTERRUPT_FLAG);
 	MAP_Interrupt_enableMaster();
 }
@@ -290,11 +299,13 @@ void lpmTimer(void){
 void saveName(){
 	uint8_t *src;
 	src = NAME_SET_FLAG_ADDRESS;
+	if(!MAP_FlashCtl_eraseSector(src))
+		while(1);
 	uint8_t val = 0xA4;
 		if(!MAP_FlashCtl_programMemory(&val,src, 1))
 			                while(1);
 	src = NAME_ADDRESS;
-	if(!MAP_FlashCtl_programMemory(machineName,src, 64))
+	if(!MAP_FlashCtl_programMemory(&machineName[0],src, 64))
 	                while(1);
 	processor = idle;
 }
@@ -302,7 +313,7 @@ void returntoCommand(void){
 	toggleBuffer();
 	MAP_UART_transmitData(EUSCI_A0_BASE,'\r');
 	MAP_UART_transmitData(EUSCI_A0_BASE,'\n');
-	writeDirect(&machineName[0],64);
+	writeDirect(&machineName[0],strlen(machineName));
 	MAP_UART_transmitData(EUSCI_A0_BASE,'>');
 	cur_state.cur_machine_state=COMMAND;
 	machinehandler=machineCommandHandler;
