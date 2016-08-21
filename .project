@@ -34,7 +34,7 @@
 	<variableList>
 		<variable>
 			<name>MSPWAREDLIB_ROOT</name>
-			<value>file:/C:/ti/msp430/MSPWare_3_30_00_18/driverlib/driverlib/MSP432P4xx</value>
+			<value>file:/C:/ti/msp/MSP432Ware_3_50_00_02/driverlib/driverlib/MSP432P4xx</value>
 		</variable>
 	</variableList>
 </projectDescription>

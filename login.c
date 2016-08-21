@@ -12,7 +12,13 @@ const uint8_t cipherkey [32]={ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0
         0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f };
 void initLogin(void)
 {
+	setEncryptKey();
+	setDecryptKey();
+}
+void setEncryptKey(void){
 	MAP_AES256_setCipherKey(AES256_BASE,cipherkey,AES256_KEYLENGTH_256BIT);
+}
+void setDecryptKey(void){
 	MAP_AES256_setDecipherKey (AES256_BASE,cipherkey,AES256_KEYLENGTH_256BIT);
 }
 void loginPromptHandler(uint32_t flag){
@@ -69,18 +75,18 @@ void loginIdleHandler(uint32_t flag){
 void testLogin(){
 	uint8_t *password;
 	password=PASSWORD_ADDRESS;
-	uint8_t encrypted[64];
-	memcpy(&encrypted[0],&password[0],64);
-	memset(encryptedData,0x00,64);
+	uint8_t encrypted[PASSWORD_LENGTH];
+	memcpy(encrypted,password,PASSWORD_LENGTH);
+	memset(encryptedData,0x00,PASSWORD_LENGTH);
 	int i=0;
-	MAP_AES256_setDecipherKey (AES256_BASE,cipherkey,AES256_KEYLENGTH_256BIT);
-	for(;i<64;i+=16)
+	for(;i<PASSWORD_LENGTH;i+=16)
 	{
-		MAP_AES256_decryptData(AES256_BASE,&encrypted[i], &encryptedData[i]);
+		setDecryptKey();
+		MAP_AES256_decryptData(AES256_BASE,&encrypted[i],&encryptedData[i]);
 	}
 	i=0;
 	bool isSame=true;
-	for(;i<64;i++)
+	for(;i<PASSWORD_LENGTH;i++)
 	{
 		if(active->receiveBuffer[active->readHEAD+i]!=encryptedData[i])
 		{

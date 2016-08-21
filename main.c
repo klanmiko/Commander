@@ -49,7 +49,7 @@
  *            |                  |
  *            |                  |
  *            |                  |
- * Author: 
+ * Author: Kaelan Mikowicz
 *******************************************************************************/
 /* DriverLib Includes */
 #include "main.h"
@@ -99,7 +99,6 @@ int main(void)
     }
     initSerial();
     initMachine();
-	initLogin();
     CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_12);
     CS_initClockSignal(CS_MCLK,CS_DCOCLK_SELECT,CS_CLOCK_DIVIDER_1);
     CS_initClockSignal(CS_SMCLK,CS_DCOCLK_SELECT,CS_CLOCK_DIVIDER_4);
@@ -151,7 +150,6 @@ void echo(int argc, char *argv[]){
 }
 void set(int argc, char *argv[]){
 	MAP_Interrupt_disableMaster();
-	uint8_t me[64];
 	if(argc>2)
 	{
 		if(strcmp(argv[1],"name")==0)
@@ -164,22 +162,24 @@ void set(int argc, char *argv[]){
 			}
 		}
 		else if(strcmp(argv[1],"password")==0){
-			if(strlen(argv[2])<=64){
+			if(strlen(argv[2])<=PASSWORD_LENGTH){
 				uint8_t *password;
-				memset(me,0x00,64);
-				strcpy(me,argv[2]);
+				uint8_t input[PASSWORD_LENGTH];
+				memset(input,0x00,PASSWORD_LENGTH);
+				strcpy(input,argv[2]);
 				password=PASSWORD_ADDRESS;
-				memset(encryptedData,0x00,64);
+				memset(encryptedData,0x00,PASSWORD_LENGTH);
 				int i=0;
-				for(;i<64;i+=16)
-				{
-					MAP_AES256_encryptData(AES256_BASE, &me[i], &encryptedData[i]);
-				}
+			    for(;i<PASSWORD_LENGTH;i+=16)
+			    {
+				    setEncryptKey();
+			    	MAP_AES256_encryptData(AES256_BASE,&input[i],&encryptedData[i]);
+			    }
 				uint8_t *src;
 				src = PASSWORD_SET_FLAG_ADDRESS;
 				if(!MAP_FlashCtl_eraseSector(src))
 					while(1);
-				if(!MAP_FlashCtl_programMemory(encryptedData,password, 64))
+				if(!MAP_FlashCtl_programMemory(encryptedData,password, PASSWORD_LENGTH))
 					while(1);
 				password=PASSWORD_SET_FLAG_ADDRESS;
 				uint8_t val = 0xA4;
